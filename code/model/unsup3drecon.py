@@ -30,12 +30,10 @@ class ImplicitFunction(nn.Module):
                     linear,
                     torch.nn.LayerNorm(linear.bias.shape[-1],elementwise_affine=False),
                     torch.nn.Softplus(beta=100)
-                    #torch.nn.ReLU(inplace=False), # avoid backprop issues with higher-order gradients
                 )
             else:
                 layer = torch.nn.Sequential(
                     linear,
-                    #torch.nn.LayerNorm(linear.bias.shape[-1],elementwise_affine=False),
                 )  
             self.impl.append(layer)
 
@@ -193,12 +191,12 @@ class Unsup3DNetwork(nn.Module):
     def forward(self, input, encoder_latent):
 
         # Parse model input
-        intrinsics = input["intrinsics"]  #B*4*4
-        uv = input["uv"]                  #B*2048*2
-        pose = input["pose"]              #B*7
-        object_mask = input["object_mask"].reshape(-1) #[2048]]
+        intrinsics = input["intrinsics"]  
+        uv = input["uv"]                  
+        pose = input["pose"]              
+        object_mask = input["object_mask"].reshape(-1)
         
-        ray_dirs, cam_loc = utils.get_camera_params(uv, pose, intrinsics) # 1*2048*3, 1*3
+        ray_dirs, cam_loc = utils.get_camera_params(uv, pose, intrinsics) 
 
         batch_size, num_pixels, _ = ray_dirs.shape
 
@@ -206,17 +204,16 @@ class Unsup3DNetwork(nn.Module):
         self.implicit_network.eval()
         with torch.no_grad():
             points, network_object_mask, dists = self.ray_tracer.forward(sdf=lambda x: implicit_network(x)[:, 0],cam_loc=cam_loc,object_mask=object_mask,ray_directions=ray_dirs)
-            #points: 2048*3,  network_object_mask: 2048 [Flase, True],  dists:  2048
         implicit_network.train()
 
         points = (cam_loc.unsqueeze(1) + dists.reshape(batch_size, num_pixels, 1) * ray_dirs).reshape(-1, 3)
 
-        sdf_output = implicit_network(points)[:, 0:1]  # 2048*257
-        ray_dirs = ray_dirs.reshape(-1, 3) #ray_dirs: 2048*3
+        sdf_output = implicit_network(points)[:, 0:1]  
+        ray_dirs = ray_dirs.reshape(-1, 3) 
 
         if self.training:
-            surface_mask = network_object_mask & object_mask    #[True,False]
-            surface_points = points[surface_mask]               #303*3
+            surface_mask = network_object_mask & object_mask    
+            surface_points = points[surface_mask]               
             surface_dists = dists[surface_mask].unsqueeze(-1)
             surface_ray_dirs = ray_dirs[surface_mask]
             surface_cam_loc = cam_loc.unsqueeze(1).repeat(1, num_pixels, 1).reshape(-1, 3)[surface_mask]
@@ -224,8 +221,8 @@ class Unsup3DNetwork(nn.Module):
             N = surface_points.shape[0]
 
             # Sample points for the eikonal loss
-            eik_bounding_box = self.object_bounding_sphere     #1.0
-            n_eik_points = batch_size * num_pixels // 2        #1024
+            eik_bounding_box = self.object_bounding_sphere    
+            n_eik_points = batch_size * num_pixels // 2        
             eikonal_points = torch.empty(n_eik_points, 3).uniform_(-eik_bounding_box, eik_bounding_box).cuda()
             eikonal_pixel_points = points.clone()
             eikonal_pixel_points = eikonal_pixel_points.detach()
@@ -234,7 +231,7 @@ class Unsup3DNetwork(nn.Module):
             points_all = torch.cat([surface_points, eikonal_points], dim=0)
 
             output = implicit_network(surface_points)
-            surface_sdf_values = output[:N, 0:1].detach()   # no gradient
+            surface_sdf_values = output[:N, 0:1].detach()   
 
             g = implicit_network.gradient(points_all)
             surface_points_grad = g[:N, 0, :].clone().detach()
