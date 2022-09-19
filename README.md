@@ -16,7 +16,7 @@ The code is developed with
 
 ## Training 
 
-* Please follow [here]() to prepare the training data.
+* Please follow [here](https://github.com/liuf1990/GANSVR/tree/main/code/data/README.md) to prepare the training data.
 
 * Train the model:
 
