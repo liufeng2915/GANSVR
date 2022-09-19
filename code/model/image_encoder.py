@@ -3,7 +3,6 @@ import torch.nn as nn
 import numpy as np
 from torch.nn import functional as F
 import model.resnet
-#import resnet
 
 class ImageEncoderNetwork(nn.Module):
     def __init__(self, latent_dim=256, img_res=256):
@@ -48,8 +47,6 @@ class ImageEncoderNetwork(nn.Module):
             feat_maps_upsamples[:, start_channel_index:start_channel_index + len_channel] = self.upsamplers[i](feat_maps[i])
             start_channel_index += len_channel
         feature_map = self.relu(self.conv1(feat_maps_upsamples))
-        #feature_map = torch.sigmoid(self.conv2(feature_map))
-        #feature_map = torch.tanh(self.conv2(feature_map))
         feature_map = self.conv2(feature_map)
         #
         feature_map = self.upsamplers_progressive(feature_map)
