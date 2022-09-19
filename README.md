@@ -21,6 +21,7 @@ The code is developed with
 * Train the model:
 
   ```bash
+  cd code
   python training/exp_runner.py --conf ./confs/car.conf 
 
 ## Citation 
